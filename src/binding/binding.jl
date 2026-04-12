@@ -1,5 +1,6 @@
 module Binding
 using Raylib_jll
+using JSON
 
 using CEnum
 using StaticArrays
@@ -10,106 +11,16 @@ import ..Raylib: RayColor, RayVector2, RayVector3, RayVector4, RayQuaternion,
 
 map(
     f->include_dependency(joinpath(@__DIR__, "../../api_reference/", f)),
-    ("raylib_api.xml", "raygui_api.xml", "raymath_api.xml", "physac_api.xml")
+    (
+        "raylib_api.json", "raymath_api.json", "rlgl_api.json", "rcamera_api.json"
+    )
 )
 
 include("./enum.jl")
 include("./struct.jl")
 
 let
-    parse_xml(f) = open(f) do io
-        function parse_data(pairs)
-            return NamedTuple(
-                Pair(Symbol(m.captures[1]), m.captures[2]) for m in eachmatch(r"([^ ]+)=\"([^\"]*)\"", pairs)
-            )
-        end
-        stack = Int[]
-        char_stream = Char[]
-        records = Dict{Symbol, Any}[Dict()]
-        sizehint!(stack, 20)
-        sizehint!(char_stream, 200)
-
-        idx = 0
-        push_c = false
-        while !eof(io)
-            idx += 1
-            c = read(io, Char)
-            push!(char_stream, c)
-
-            if c == '"' # avoid stacking </> in string
-                char_stream[last(stack)] == '"' ? pop!(stack) : push!(stack, idx)
-            elseif c == '<' # mark start position
-                push_c = true
-                push!(stack, idx)
-            elseif c == '>'
-                push_c = false
-                pidx = pop!(stack)
-                content = String(@view(char_stream[pidx:idx]))
-                idx = pidx-1 # reset idx
-                resize!(char_stream, idx) # remove content from stream
-
-                m = match(r"</([^ ]+)>", content)
-                if !isnothing(m)
-                    label = m.captures[]
-                    rec = pop!(records)
-                    if isempty(records)
-                        push!(rec)
-                    end
-                    continue
-                end
-
-                m = match(r"<([^ ]+) (.+) />", content)
-                if !isnothing(m)
-                    label, pairs = m.captures
-                    data = parse_data(pairs)
-                    push!(get!(last(records), Symbol(label), typeof(data)[]), data)
-                    continue
-                end
-
-                m = match(r"<\?.*\?>", content)
-                if !isnothing(m)
-                    @debug "ignore xml header"
-                    continue
-                end
-
-                m = match(r"<([^ ]+)( .+)?>", content)
-                if !isnothing(m)
-                    label, pairs = m.captures
-                    sym = Symbol(label)
-                    rr = last(records)
-
-                    record = Dict{Symbol, Any}()
-                    if haskey(rr, sym)
-                        rlist = rr[sym]
-                        if rlist isa Vector
-                            push!(rlist, record)
-                        else
-                            rr[sym] = [rlist, record]
-                        end
-                    else
-                        rr[sym] = record
-                    end
-                    push!(records, record)
-
-                    if !isnothing(pairs)
-                        record[:attr] = parse_data(pairs)
-                    end
-
-                    continue
-                end
-
-                @debug "cannnot parse content: $content"
-            else
-                if !push_c
-                    pop!(char_stream)
-                    idx -= 1
-                end
-            end
-        end
-        @assert all(isempty, (stack, char_stream))
-        return first(records)
-    end
-
+    parse_json(f) = JSON.parse(read(f, String))
     builder = function ()
         special_ptr = Dict{String, Any}(
             "char"   => (name, n) -> ("$name *", n-1)
@@ -246,14 +157,13 @@ let
         valid_name(s) = (m = match(r"^[_a-zA-Z][_a-zA-Z0-9]*$", s); isnothing(m) ? nothing : Symbol(s))
 
         function gen_enum(def)
-            attr = def[:attr]
-            name = Symbol(attr.name)
-            vcount = Base.parse(Int, attr.valueCount)
+            name = Symbol(def["name"])
+            vcount = length(def["values"]) 
             iszero(vcount) && return nothing
-            values = def[:Value]
+            values = def["values"]
 
             values_ex = map(values) do v
-                i = tryparse(Int, v.integer)
+                i = v.value
                 n = Symbol(v.name)
                 isnothing(i) ?
                     :($n) :
@@ -269,10 +179,8 @@ let
         end
 
         function gen_struct(def)
-            attr = def[:attr]
-            name = attr.name
-            fcount = Base.parse(Int, attr.fieldCount)
-            fields = def[:Field]
+            name = def["name"]
+            fields = def["fields"]
 
             fields_ex = map(fields) do f
                 T = parse_c_type(f.type)
@@ -296,14 +204,13 @@ let
         end
 
         function gen_func(def, use_desc=true)
-            attr = def[:attr]
-            name = Symbol(attr.name)
-            rT = attr.retType
-            desc = use_desc ? attr.desc : ""
-            pcount = Base.parse(Int, attr.paramCount)
-            params = iszero(pcount) ? () : def[:Param]
+            name = Symbol(def["name"])
+            rT = def["returnType"] 
+            desc = use_desc ? def["description"] : ""
+            hasparams = haskey(def, "params")
+            params = hasparams ? def["params"] : ()
 
-            c_param_ex = if !iszero(pcount)
+            c_param_ex = if hasparams
                 map(params) do p
                     T = parse_c_type(p.type)
                     vname = valid_name(p.name)
@@ -316,7 +223,7 @@ let
 
             (any(isnothing, c_param_ex) || isnothing(c_rT)) && return nothing
 
-            jl_param_ex = if !iszero(pcount)
+            jl_param_ex = if hasparams 
                 map(params) do p
                     T = parse_jl_type(p.type)
                     typeassert_expr(Symbol(p.name), T)
@@ -350,17 +257,17 @@ let
         end
 
         function gen(f, lib, s, defs, nf = Symbol, depth=1)
-            type = defs[Symbol("$(s)s")]
-            n_entry = Base.parse(Int, type[:attr].count)
+            type = defs[("$(lowercase(string(s)))s")]
+            n_entry = length(type)
             iszero(n_entry) && return nothing
 
             postpone = nothing
             for d = 1:depth
-                entries = isone(d) ? type[s] : postpone
+                entries = isone(d) ? type : postpone
                 postpone = []
 
                 for entry in entries
-                    name = nf(entry[:attr].name)
+                    name = nf(entry["name"])
 
                     if isdefined(@__MODULE__, name)
                         @debug "skip duplicate $name from $lib."
@@ -378,7 +285,7 @@ let
                         @eval $expr
 
                         if s == :Struct
-                            c_name = entry[:attr].name
+                            c_name = entry["name"]
                             if !haskey(typemap_dict, c_name)
                                 typemap_dict[c_name] = name
                                 @debug "register $c_name => $name"
@@ -398,22 +305,22 @@ let
 
     apis = map(
         f->joinpath(@__DIR__, "../../api_reference/", f),
-        ("raylib_api.xml", "raygui_api.xml",
-         "raymath_api.xml", "physac_api.xml")
+        ("raylib_api.json", "rlgl_api.json",
+         "raymath_api.json", "rcamera_api.json")
     )
 
-    xmls = Dict(
+    jsons = Dict(
         map(apis) do api_file
-          api_file=>parse_xml(api_file)
+          api_file=>parse_json(api_file)
         end
     )
 
 
     for api in apis
-        xml = xmls[api]
+        json = jsons[api]
         lib = split(basename(api), '_')[1]
 
-        defs = xml[:raylibAPI]
+        defs = json
         gen(gen_enum, lib, :Enum, defs)
 
         gen(gen_struct, lib, :Struct, defs, s->Symbol("Ray$s"), 2)

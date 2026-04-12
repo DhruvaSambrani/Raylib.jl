@@ -12,6 +12,7 @@ makedocs(;
         prettyurls=get(ENV, "CI", "false") == "true",
         canonical="https://chengchingwen.github.io/Raylib.jl",
         assets=String[],
+        size_threshold=1_000_000
     ),
     pages=[
         "Home" => "index.md",

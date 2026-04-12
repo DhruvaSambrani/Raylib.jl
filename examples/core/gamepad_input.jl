@@ -9,23 +9,25 @@ function main()
 
     Raylib.SetTargetFPS(60)
 
+    gamepad = 1
+
     while !Raylib.WindowShouldClose()
 
         Raylib.BeginDrawing()
 
         Raylib.ClearBackground(Raylib.RAYWHITE)
 
-        if Raylib.IsGamepadAvailable(0)
+        if Raylib.IsGamepadAvailable(gamepad)
 
-            gamepad_name = unsafe_string(Raylib.GetGamepadName(0))
+            gamepad_name = unsafe_string(Raylib.GetGamepadName(gamepad))
             Raylib.DrawText("GP1: $(gamepad_name)", 10, 10, 10, Raylib.BLACK)
 
             Raylib.DrawText("- GENERIC GAMEPAD -", 280, 180, 20, Raylib.GRAY)
 
-            Raylib.DrawText("DETECTED AXIS [$(Raylib.GetGamepadAxisCount(0))]:", 10, 50, 10, Raylib.MAROON)
+            Raylib.DrawText("DETECTED AXIS [$(Raylib.GetGamepadAxisCount(gamepad))]:", 10, 50, 10, Raylib.MAROON)
 
-            for i in 0:Raylib.GetGamepadAxisCount(0)-1
-                Raylib.DrawText("AXIS $i: $(Raylib.GetGamepadAxisMovement(0, i))", 20, 70 + 20*i, 10, Raylib.DARKGRAY)
+            for i in 0:Raylib.GetGamepadAxisCount(gamepad)-1
+                Raylib.DrawText("AXIS $i: $(Raylib.GetGamepadAxisMovement(gamepad, i))", 20, 70 + 20*i, 10, Raylib.DARKGRAY)
             end
 
             if Raylib.GetGamepadButtonPressed() != -1

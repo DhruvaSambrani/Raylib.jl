@@ -72,7 +72,7 @@ function main()
         )
     end
 
-    @ccall libraylib.SetCameraMode(camera[]::RayCamera3D, 3::Cint)::Cvoid
+    @ccall libraylib.UpdateCamera(camera[]::RayCamera3D, 3::Cint)::Cvoid
     @ccall libraylib.SetTargetFPS(60::Cint)::Cvoid
 
     while iszero(@ccall libraylib.WindowShouldClose()::Cint)
