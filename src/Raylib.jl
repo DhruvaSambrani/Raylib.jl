@@ -11,7 +11,7 @@ using .Binding
 
 include("core.jl")
 include("shapes.jl")
-
+include("shaders.jl")
 include("easing.jl")
 
 end

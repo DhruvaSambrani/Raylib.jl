@@ -225,7 +225,11 @@ let
 
             jl_param_ex = if hasparams 
                 map(params) do p
-                    T = parse_jl_type(p.type)
+                    if occursin("void *", p.type)
+                        T = nothing
+                    else
+                        T = parse_jl_type(p.type)
+                    end
                     typeassert_expr(Symbol(p.name), T)
                 end
             else

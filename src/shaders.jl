@@ -1,0 +1,22 @@
+function Binding.SetShaderValue(shader::RayShader, locIndex::Integer, value::Float64)
+    @warn "Float64 being cast to float32" maxlog=1
+    Binding.SetShaderValue(shader, locIndex, Float32(value))
+end
+
+function Binding.SetShaderValue(shader::RayShader, locIndex::Integer, value::Float32)
+    Binding.SetShaderValue(shader, locIndex, Ref(value), Int(Binding.SHADER_UNIFORM_FLOAT))
+end
+
+function Binding.SetShaderValue(shader::RayShader, locIndex::Integer, value::Integer)
+    Binding.SetShaderValue(shader, locIndex, Ref(value), Int(Binding.SHADER_UNIFORM_INT))
+end
+
+function Binding.SetShaderValue(shader::RayShader, locIndex::Integer, value::Union{NTuple{2, Real}, StaticVector{2, Real}})
+    v32 = Float32.(value) 
+    Binding.SetShaderValue(shader, locIndex, Ref(v32), Int(SHADER_UNIFORM_VEC2))
+end
+
+function Binding.SetShaderValue(shader::RayShader, locIndex::Integer, value::Union{NTuple{3, Real}, StaticVector{3, Real}})
+    v32 = Float32.(value)
+    Binding.SetShaderValue(shader, locIndex, Ref(v32), Int(SHADER_UNIFORM_VEC3))
+end
