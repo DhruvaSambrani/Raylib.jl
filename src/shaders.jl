@@ -20,3 +20,16 @@ function Binding.SetShaderValue(shader::RayShader, locIndex::Integer, value::Uni
     v32 = Float32.(value)
     Binding.SetShaderValue(shader, locIndex, Ref(v32), Int(SHADER_UNIFORM_VEC3))
 end
+
+Base.propertynames(::RayModel) = [fieldnames(RayModel); [:meshes_array, :materials_array]]
+
+function Base.getproperty(model::RayModel, name::Symbol)
+    if name === :materials_array
+        return DynamicArray(model.materials, model.materialCount)
+    elseif name === :meshes_array
+        return DynamicArray(model.meshes, model.meshCount) 
+    else
+        return getfield(model, name)
+    end
+end
+

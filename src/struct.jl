@@ -2,18 +2,66 @@ using StaticArrays
 
 import Base: propertynames, getproperty, setproperty!
 
-struct RayVector2 <: FieldVector{2, Cfloat}
+struct DynamicArray{T} <: AbstractVector{T}
+    ptr::Ptr{T}
+    len::Integer
+end
+
+Base.size(A::DynamicArray) = (A.len,)
+Base.IndexStyle(::Type{<:DynamicArray}) = IndexLinear()
+
+function Base.getindex(A::DynamicArray{T}, i::Int) where T
+    @boundscheck 1 <= i <= A.len || throw(BoundsError(A, i))
+    return Ptr{T}(A.ptr + (i - 1) * sizeof(T))
+end
+
+struct MutableView{T}
+    ptr::Ptr{T}
+end
+
+Base.propertynames(::MutableView{T}) where T = fieldnames(T)
+
+function Base.getproperty(view::MutableView{T}, name::Symbol) where {T}
+    name === :ptr && return getfield(view, :ptr)
+    return getproperty(unsafe_load(getfield(view, :ptr)), name)
+end
+
+function Base.setproperty!(view::MutableView{T}, name::Symbol, val) where {T}
+    ptr = getfield(view, :ptr)
+    mat = unsafe_load(ptr)
+
+    args = ntuple(fieldcount(T)) do i
+        if fieldname(T, i) === name
+            convert(fieldtype(T, i), val)
+        else
+            getfield(mat, i)
+        end
+    end
+
+    unsafe_store!(ptr, T(args...))
+    return val
+end
+
+macro mutable(ex)
+    if Meta.isexpr(ex, :(=)) && Meta.isexpr(ex.args[1], :.)
+        ex.args[1].args[1] = :( Raylib.MutableView($(ex.args[1].args[1])) )
+        return esc(ex)
+    end
+    error("@mutable requires an expression of the form `ptr.property = value`")
+end
+
+struct RayVector2 <: FieldVector{2,Cfloat}
     x::Cfloat
     y::Cfloat
 end
 
-struct RayVector3 <: FieldVector{3, Cfloat}
+struct RayVector3 <: FieldVector{3,Cfloat}
     x::Cfloat
     y::Cfloat
     z::Cfloat
 end
 
-struct RayVector4 <: FieldVector{4, Cfloat}
+struct RayVector4 <: FieldVector{4,Cfloat}
     x::Cfloat
     y::Cfloat
     z::Cfloat
@@ -22,12 +70,12 @@ end
 
 const RayQuaternion = RayVector4
 
-rayvector(v::Vararg{Real, 2}) = RayVector2(v)
-rayvector(v::Vararg{Real, 3}) = RayVector3(v)
-rayvector(v::Vararg{Real, 4}) = RayVector4(v)
+rayvector(v::Vararg{Real,2}) = RayVector2(v)
+rayvector(v::Vararg{Real,3}) = RayVector3(v)
+rayvector(v::Vararg{Real,4}) = RayVector4(v)
 
-const RayMatrix = SMatrix{4, 4, Cfloat, 16}
-const RayMatrix2x2 = SMatrix{2, 2, Cfloat, 4}
+const RayMatrix = SMatrix{4,4,Cfloat,16}
+const RayMatrix2x2 = SMatrix{2,2,Cfloat,4}
 
 mutable struct RayCamera3D
     #position::RayVector3  # Camera position
@@ -46,7 +94,7 @@ mutable struct RayCamera3D
     up_z::Cfloat
 
     fovy::Cfloat          # Camera field-of-view apperture in Y (degrees) in perspective,
-                          #   used as near plane width in orthographic
+    #   used as near plane width in orthographic
     projection::Cint      # Camera projection: CAMERA_PERSPECTIVE or CAMERA_ORTHOGRAPHIC
 end
 
@@ -172,3 +220,4 @@ end
         return setfield!(x, name, convert(fieldtype(RayCamera2D, name), v))
     end
 end
+

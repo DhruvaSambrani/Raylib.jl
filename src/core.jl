@@ -1,5 +1,5 @@
 """
-    UpdateCamera(camera::RayCamera3D)
+    UpdateCamera(camera::RayCamera3D, mode::CameraMode)
 
 Return new camera with updated parameter.
 """
@@ -11,7 +11,7 @@ function Binding.UpdateCamera(camera::RayCamera3D, mode::CameraMode)
 end
 
 """
-    UpdateCamera!(camera::RayCamera3D)
+    UpdateCamera!(camera::RayCamera3D, mode::CameraMode)
 
 Update camera position for selected mode
 """
