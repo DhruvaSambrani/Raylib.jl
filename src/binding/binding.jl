@@ -9,26 +9,26 @@ import ..Raylib: RayColor, RayVector2, RayVector3, RayVector4, RayQuaternion,
     RayMatrix, RayMatrix2x2, RayCamera, RayCamera2D, RayCamera3D
 
 
-map(
-    f->include_dependency(joinpath(@__DIR__, "../../api_reference/", f)),
-    (
-        "raylib_api.json", "raymath_api.json", "rlgl_api.json", "rcamera_api.json"
-    )
-)
-
 include("./enum.jl")
 include("./struct.jl")
+
+function Base.cconvert(::Type{Ptr{Cstring}}, v::Vector{String})
+    return (Base.unsafe_convert.(Cstring, v), v)
+end
+function Base.unsafe_convert(::Type{Ptr{Cstring}}, x::Tuple{Vector{Cstring}, Vector{String}})
+    return Base.unsafe_convert(Ptr{Cstring}, x[1])
+end
 
 let
     parse_json(f) = JSON.parse(read(f, String))
     builder = function ()
         special_ptr = Dict{String, Any}(
-            "char"   => (name, n) -> ("$name *", n-1)
+            "char"   => (name, n) -> n == 2 ? ("char **", 0) : ("$name *", n-1)
         )
         typemap_dict = Dict{String, Any}(
             "void"               => (:Cvoid, :Nothing),
             "char"               => (:Cchar, :Char),
-            "char *"             => (:Cstring, :String),
+            "char **"            => (:(Ptr{Cstring}), :(Vector{String})),
             "int"                => (:Cint, :Integer),
             "long"               => (:Clong, :Integer),
             "long long"          => (:Clonglong, :Integer),
@@ -40,7 +40,7 @@ let
             "unsigned long"      => (:Culong, :Integer),
             "unsigned long long" => (:Culonglong, :Integer),
             "unsigned short"     => (:Cushort, :Integer),
-            "bool"               => (:Cuchar, :Bool, :Bool),
+            "bool"               => (:Bool, :Bool, :Bool),
             "float3"             => :(NTuple{3, Cfloat}),
             "float16"            => :(NTuple{16, Cfloat}),
             "Color"              => :RayColor,
@@ -121,6 +121,14 @@ let
         get_type(x::Function, n, i) = x(n, i)
 
         function x_typemap(i, iscst, type_name, ::Nothing)
+            if type_name == "char *"
+                if iscst || i == 3  # If it's const, or if it's a return type
+                    return i == 1 ? :Cstring : :String
+                else
+                    # Mutable string buffer!
+                    return i == 1 ? :(Ptr{UInt8}) : :(MutableString)
+                end
+            end
             T = maybe(get(typemap_dict, type_name, nothing)) do x
                 get_type(x, type_name, i)
             end
@@ -310,7 +318,7 @@ let
     apis = map(
         f->joinpath(@__DIR__, "../../api_reference/", f),
         ("raylib_api.json", "rlgl_api.json",
-         "raymath_api.json", "rcamera_api.json")
+         "raymath_api.json", "rcamera_api.json", "raygui_api.json")
     )
 
     jsons = Dict(
@@ -329,7 +337,7 @@ let
 
         gen(gen_struct, lib, :Struct, defs, s->Symbol("Ray$s"), 2)
 
-        if lib == "raylib" || lib == "physac"
+        if lib == "raylib"
             gen(gen_func, lib, :Function, defs)
         else
             gen(Base.Fix2(gen_func, false), lib, :Function, defs)

@@ -50,6 +50,22 @@ macro mutable(ex)
     error("@mutable requires an expression of the form `ptr.property = value`")
 end
 
+struct MutableString
+    buffer::Vector{UInt8}
+
+    function MutableString(s::String, maxsize::Int=256)
+        buf = zeros(UInt8, maxsize)
+        s_bytes = codeunits(s)
+        len = min(length(s_bytes), maxsize - 1)
+        buf[1:len] .= s_bytes[1:len]
+        return new(buf)
+    end
+end
+
+Base.unsafe_convert(::Type{Ptr{UInt8}}, ms::MutableString) = Base.unsafe_convert(Ptr{UInt8}, ms.buffer)
+Base.unsafe_convert(::Type{Cstring}, ms::MutableString) = Base.unsafe_convert(Cstring, ms.buffer)
+Base.String(ms::MutableString) = unsafe_string(pointer(ms.buffer))
+
 struct RayVector2 <: FieldVector{2,Cfloat}
     x::Cfloat
     y::Cfloat
