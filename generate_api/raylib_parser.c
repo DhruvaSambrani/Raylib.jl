@@ -72,7 +72,7 @@
 #define MAX_CALLBACKS_TO_PARSE    64    // Maximum number of callbacks to parse
 #define MAX_FUNCS_TO_PARSE      1024    // Maximum number of functions to parse
 
-#define MAX_LINE_LENGTH         1024    // Maximum length of one line (including comments)
+#define MAX_LINE_LENGTH         2048    // Maximum length of one line (including comments)
 
 #define MAX_STRUCT_FIELDS         64    // Maximum number of struct fields
 #define MAX_ENUM_VALUES          512    // Maximum number of enum values
@@ -239,6 +239,7 @@ int main(int argc, char* argv[])
     // Defines line indices
     int *defineLines = (int *)malloc(MAX_DEFINES_TO_PARSE*sizeof(int));
 
+
     // Structs line indices
     int *structLines = (int *)malloc(MAX_STRUCTS_TO_PARSE*sizeof(int));
 
@@ -299,6 +300,8 @@ int main(int argc, char* argv[])
         }
     }
 
+    printf("read structs");
+
     // Read alias lines
     for (int i = 0; i < linesCount; i++)
     {
@@ -320,6 +323,7 @@ int main(int argc, char* argv[])
             aliasCount++;
         }
     }
+    printf("read alias");
 
     // Read enum lines
     for (int i = 0; i < linesCount; i++)
@@ -333,6 +337,7 @@ int main(int argc, char* argv[])
             enumCount++;
         }
     }
+    printf("read enum");
 
     // Read callback lines
     for (int i = 0; i < linesCount; i++)
@@ -359,6 +364,7 @@ int main(int argc, char* argv[])
             }
         }
     }
+    printf("read callback");
 
     // Read function lines
     for (int i = 0; i < linesCount; i++)
@@ -1307,6 +1313,11 @@ static void GetDescription(const char *line, char *description)
         c++;
     }
     if (descStart != -1) MemoryCopy(description, &line[descStart], c - descStart);
+    for (int i = 0; i < c - descStart; ++i){
+        if (description[i] == '\"') {
+            description[i] = '\'';
+        }
+    }
 }
 
 // Move array size from name to type

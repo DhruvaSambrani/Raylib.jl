@@ -212,3 +212,25 @@ struct RayGuiStyleProp
 end
 
 
+struct DynamicArray{T} <: AbstractVector{T}
+    ptr::Ptr{T}
+    len::Integer
+end
+
+Base.size(A::DynamicArray) = (A.len,)
+Base.IndexStyle(::Type{<:DynamicArray}) = IndexLinear()
+
+function Base.getindex(A::DynamicArray{T}, i::Int) where T
+    @boundscheck 1 <= i <= A.len || throw(BoundsError(A, i))
+    return Ptr{T}(A.ptr + (i - 1) * sizeof(T))
+end
+
+const RayFilePathList = DynamicArray{Cstring}
+
+function Base.cconvert(::Type{Ptr{Cstring}}, v::Vector{String})
+    return (Base.unsafe_convert.(Cstring, v), v)
+end
+function Base.unsafe_convert(::Type{Ptr{Cstring}}, x::Tuple{Vector{Cstring}, Vector{String}})
+    return Base.unsafe_convert(Ptr{Cstring}, x[1])
+end
+

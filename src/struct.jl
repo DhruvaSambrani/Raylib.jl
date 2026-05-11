@@ -2,19 +2,6 @@ using StaticArrays
 
 import Base: propertynames, getproperty, setproperty!
 
-struct DynamicArray{T} <: AbstractVector{T}
-    ptr::Ptr{T}
-    len::Integer
-end
-
-Base.size(A::DynamicArray) = (A.len,)
-Base.IndexStyle(::Type{<:DynamicArray}) = IndexLinear()
-
-function Base.getindex(A::DynamicArray{T}, i::Int) where T
-    @boundscheck 1 <= i <= A.len || throw(BoundsError(A, i))
-    return Ptr{T}(A.ptr + (i - 1) * sizeof(T))
-end
-
 struct MutableView{T}
     ptr::Ptr{T}
 end

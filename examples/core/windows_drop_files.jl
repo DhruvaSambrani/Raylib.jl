@@ -15,6 +15,7 @@ function main()
 
         if Raylib.IsFileDropped()
             droppedFiles = Raylib.LoadDroppedFiles()
+            println(droppedFiles)
         end
 
         Raylib.BeginDrawing()

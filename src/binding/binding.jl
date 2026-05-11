@@ -12,13 +12,6 @@ import ..Raylib: RayColor, RayVector2, RayVector3, RayVector4, RayQuaternion,
 include("./enum.jl")
 include("./struct.jl")
 
-function Base.cconvert(::Type{Ptr{Cstring}}, v::Vector{String})
-    return (Base.unsafe_convert.(Cstring, v), v)
-end
-function Base.unsafe_convert(::Type{Ptr{Cstring}}, x::Tuple{Vector{Cstring}, Vector{String}})
-    return Base.unsafe_convert(Ptr{Cstring}, x[1])
-end
-
 let
     parse_json(f) = JSON.parse(read(f, String))
     builder = function ()
@@ -318,7 +311,7 @@ let
     apis = map(
         f->joinpath(@__DIR__, "../../api_reference/", f),
         ("raylib_api.json", "rlgl_api.json",
-         "raymath_api.json", "rcamera_api.json", "raygui_api.json")
+         "raymath_api.json", "raygui_api.json")
     )
 
     jsons = Dict(
