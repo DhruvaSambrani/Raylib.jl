@@ -21,9 +21,6 @@ function UpdateCamera!(camera::RayCamera3D, mode::CameraMode)
     return camera
 end
 
-Base.length(it::RayFilePathList) = it.count
-Base.iterate(it::RayFilePathList, i=1) = i>it.count ? nothing : (it[i], i+1)
-
 function Base.getindex(it::RayFilePathList, i)
     list = Base.unsafe_wrap(Vector{Cstring}, it.paths, it.count)
     checkbounds(list, i)

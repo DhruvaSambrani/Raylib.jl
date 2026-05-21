@@ -41,6 +41,7 @@ function main()
 
     cameraMode = Raylib.CAMERA_FIRST_PERSON
     Raylib.SetTargetFPS(60)
+    Raylib.DisableCursor()
 
     while !Raylib.WindowShouldClose()
         Raylib.UpdateCamera!(camera, cameraMode)

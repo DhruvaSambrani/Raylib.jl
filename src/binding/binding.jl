@@ -65,6 +65,7 @@ let
             "AudioStream"        => :RayAudioStream,
             "Sound"              => :RaySound,
             "Music"              => :RayMusic,
+            "FilePathList"       => :RayFilePathList,
             "VrDeviceInfo"       => :RayVrDeviceInfo,
             "VrStereoConfig"     => :RayVrStereoConfig,
             "Matrix"             => :RayMatrix,

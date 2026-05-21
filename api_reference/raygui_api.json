@@ -9,13 +9,13 @@
     {
       "name": "RAYGUI_VERSION_MAJOR",
       "type": "INT",
-      "value": 4,
+      "value": 5,
       "description": ""
     },
     {
       "name": "RAYGUI_VERSION_MINOR",
       "type": "INT",
-      "value": 5,
+      "value": 0,
       "description": ""
     },
     {
@@ -742,7 +742,7 @@
         {
           "name": "PROGRESS_SIDE",
           "value": 17,
-          "description": "ProgressBar increment side: 0-left->right, 1-right-left "
+          "description": "ProgressBar increment side: 0-left->right, 1-right-left"
         }
       ]
     },
@@ -2329,6 +2329,21 @@
         {
           "type": "const char *",
           "name": "fileName"
+        }
+      ]
+    },
+    {
+      "name": "GuiLoadStyleFromMemory",
+      "description": "Load style from memory (binary only)",
+      "returnType": "void",
+      "params": [
+        {
+          "type": "const unsigned char *",
+          "name": "fileData"
+        },
+        {
+          "type": "int",
+          "name": "dataSize"
         }
       ]
     },

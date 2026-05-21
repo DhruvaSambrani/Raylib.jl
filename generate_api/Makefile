@@ -1,7 +1,7 @@
 EXTENSION?=json
 FORMAT?=JSON
-#REF = tags/5.5
-REF = heads/master
+REF = tags/6.0
+#REF = heads/master
 
 .PHONY: all parse clean raylib_api setup update_api
 
@@ -76,20 +76,20 @@ rlparser.c:
 rlparser: rlparser.c
 	$(CC) rlparser.c -o rlparser $(CFLAGS)
 
-raylib_api: sources/raylib.h raylib_parser
+raylib_api: sources/raylib.h rlparser
 	FORMAT=JSON EXTENSION=json $(MAKE) raylib_api.json
 
-raylib_api.$(EXTENSION): sources/raylib.h raylib_parser
-	./raylib_parser -i sources/raylib.h -o raylib_api.$(EXTENSION) -f $(FORMAT) -d RLAPI
+raylib_api.$(EXTENSION): sources/raylib.h rlparser
+	./rlparser -i sources/raylib.h -o raylib_api.$(EXTENSION) -f $(FORMAT) -d RLAPI
 
-raymath_api.$(EXTENSION): sources/raymath.h raylib_parser
-	./raylib_parser -i sources/raymath.h -o raymath_api.$(EXTENSION) -f $(FORMAT) -d RMAPI
+raymath_api.$(EXTENSION): sources/raymath.h rlparser
+	./rlparser -i sources/raymath.h -o raymath_api.$(EXTENSION) -f $(FORMAT) -d RMAPI
 
-rlgl_api.$(EXTENSION): sources/rlgl.h raylib_parser
-	./raylib_parser -i sources/rlgl.h -o rlgl_api.$(EXTENSION) -f $(FORMAT) -d RLAPI -t "RLGL IMPLEMENTATION"
+rlgl_api.$(EXTENSION): sources/rlgl.h rlparser
+	./rlparser -i sources/rlgl.h -o rlgl_api.$(EXTENSION) -f $(FORMAT) -d RLAPI -t "RLGL IMPLEMENTATION"
 
-raygui_api.$(EXTENSION): sources/raygui.h raylib_parser
-	./raylib_parser -i sources/raygui.h -o raygui_api.$(EXTENSION) -f $(FORMAT) -d RAYGUIAPI -t "RAYGUI IMPLEMENTATION"
+raygui_api.$(EXTENSION): sources/raygui.h rlparser
+	./rlparser -i sources/raygui.h -o raygui_api.$(EXTENSION) -f $(FORMAT) -d RAYGUIAPI -t "RAYGUI IMPLEMENTATION"
 
 parse: raylib_api.$(EXTENSION) raymath_api.$(EXTENSION) rlgl_api.$(EXTENSION) raygui_api.$(EXTENSION)
 
@@ -118,11 +118,11 @@ sources/raygui.h: | sources
 # `make parse` (and therefore `make all) requires raygui.h to exist in the source directory
 # API files for individual headers can be created likeso, provided the relevant header exists:
 #     FORMAT=JSON EXTENSION=json make raygui_api.json
-all: raylib_parser setup
+all: rlparser setup
 	FORMAT=JSON EXTENSION=json $(MAKE) parse
 
 update_api: all
 	cp *.json ../api_reference
 
 clean:
-	rm -rf raylib_parser *.json sources
+	rm -rf rlparser *.json sources rlparser.c
