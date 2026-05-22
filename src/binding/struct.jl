@@ -161,6 +161,7 @@ end
 struct RayAudioStream
     # rAudioBuffer *buffer;       // Pointer to internal data used by the audio system
     buffer::Ptr{Cvoid}
+    processor::Ptr{Cvoid}
 
     sampleRate::Cuint    # Frequency (samples per second)
     sampleSize::Cuint    # Bit depth (bits per sample): 8, 16, 32 (24 not supported)

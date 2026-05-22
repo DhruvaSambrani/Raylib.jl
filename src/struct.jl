@@ -1,40 +1,33 @@
 using StaticArrays
+using Accessors
 
 import Base: propertynames, getproperty, setproperty!
 
-struct MutableView{T}
-    ptr::Ptr{T}
+function mutate_or_set!(obj, ::Val{property}, val) where {property}
+    return Accessors.set(obj, PropertyLens{property}(), val)
 end
 
-Base.propertynames(::MutableView{T}) where T = fieldnames(T)
-
-function Base.getproperty(view::MutableView{T}, name::Symbol) where {T}
-    name === :ptr && return getfield(view, :ptr)
-    return getproperty(unsafe_load(getfield(view, :ptr)), name)
-end
-
-function Base.setproperty!(view::MutableView{T}, name::Symbol, val) where {T}
-    ptr = getfield(view, :ptr)
-    mat = unsafe_load(ptr)
-
-    args = ntuple(fieldcount(T)) do i
-        if fieldname(T, i) === name
-            convert(fieldtype(T, i), val)
-        else
-            getfield(mat, i)
-        end
-    end
-
-    unsafe_store!(ptr, T(args...))
-    return val
+function mutate_or_set!(ptr::Ptr{T}, ::Val{property}, val) where {T, property}
+    obj = unsafe_load(ptr)
+    new_obj = Accessors.set(obj, PropertyLens{property}(), val)
+    unsafe_store!(ptr, new_obj)
+    return ptr
 end
 
 macro mutable(ex)
     if Meta.isexpr(ex, :(=)) && Meta.isexpr(ex.args[1], :.)
-        ex.args[1].args[1] = :( Raylib.MutableView($(ex.args[1].args[1])) )
-        return esc(ex)
+        lhs = ex.args[1]                     # e.g., obj.property
+        obj = lhs.args[1]                     # e.g., obj
+        field = QuoteNode(lhs.args[2].value) # e.g., :property
+        val = ex.args[2]                     # e.g., value
+
+        if obj isa Symbol
+            return esc(:($obj = Raylib.mutate_or_set!($obj, Val($field), $val)))
+        else
+            return esc(:(Raylib.mutate_or_set!($obj, Val($field), $val)))
+        end
     end
-    error("@mutable requires an expression of the form `ptr.property = value`")
+    error("@mutable requires an expression of the form `obj.property = value`")
 end
 
 struct MutableString

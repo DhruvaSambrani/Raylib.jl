@@ -12,6 +12,10 @@ import ..Raylib: RayColor, RayVector2, RayVector3, RayVector4, RayQuaternion,
 include("./enum.jl")
 include("./struct.jl")
 
+to_cstring(::Nothing) = C_NULL
+to_cstring(s::String) = s
+to_cstring(p::Union{Cstring, Ptr}) = p
+
 let
     parse_json(f) = JSON.parse(read(f, String))
     builder = function ()
@@ -22,14 +26,14 @@ let
             "void"               => (:Cvoid, :Nothing),
             "char"               => (:Cchar, :Char),
             "char **"            => (:(Ptr{Cstring}), :(Vector{String})),
-            "int"                => (:Cint, :Integer),
+            "int"                => (:Cint, :(Union{Integer, CEnum.Cenum})),
             "long"               => (:Clong, :Integer),
             "long long"          => (:Clonglong, :Integer),
             "short"              => (:Cshort, :Integer),
             "float"              => (:Cfloat, :Real),
             "double"             => (:Cdouble, :Real),
             "unsigned char"      => (:Cuchar, :UInt8),
-            "unsigned int"       => (:Cuint, :Integer),
+            "unsigned int"       => (:Cuint, :(Union{Integer, CEnum.Cenum})),
             "unsigned long"      => (:Culong, :Integer),
             "unsigned long long" => (:Culonglong, :Integer),
             "unsigned short"     => (:Cushort, :Integer),
@@ -117,9 +121,8 @@ let
         function x_typemap(i, iscst, type_name, ::Nothing)
             if type_name == "char *"
                 if iscst || i == 3  # If it's const, or if it's a return type
-                    return i == 1 ? :Cstring : :String
+                    return i == 1 ? :Cstring : (i == 2 ? :(Union{String, Nothing}) : :String)
                 else
-                    # Mutable string buffer!
                     return i == 1 ? :(Ptr{UInt8}) : :(MutableString)
                 end
             end
@@ -216,14 +219,19 @@ let
                 map(params) do p
                     T = parse_c_type(p.type)
                     vname = valid_name(p.name)
-                    isnothing(T) || isnothing(vname) ? nothing : typeassert_expr(vname, T)
+                    if isnothing(T) || isnothing(vname)
+                        nothing
+                    else
+                        val = T === :Cstring ? :(to_cstring($vname)) : vname
+                        typeassert_expr(val, T)
+                    end
                 end
             else
                 Expr[]
             end
             c_rT = parse_c_type(rT)
 
-            (any(isnothing, c_param_ex) || isnothing(c_rT)) && return nothing
+            (any(isnothing, c_param_ex) || isnothing(c_rT))  && return nothing
 
             jl_param_ex = if hasparams 
                 map(params) do p
