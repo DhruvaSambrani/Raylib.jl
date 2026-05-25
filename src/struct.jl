@@ -1,5 +1,4 @@
 using StaticArrays
-using Accessors
 
 import Base: propertynames, getproperty, setproperty!
 
