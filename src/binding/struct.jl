@@ -1,11 +1,62 @@
-struct RayRectangle
+# 1. Fallback for when no value is provided (defaults to c_default)
+c_convert(::Type{T}, ::Nothing) where T = c_default(T)
+c_convert(::Type{T}, value::T) where T = value
+function c_convert(::Type{Ptr{T}}, value::AbstractArray) where T
+    typed_data = eltype(value) === T ? value : convert(AbstractArray{T}, value)
+    nbytes = length(typed_data) * sizeof(T)
+    c_ptr = convert(Ptr{T}, MemAlloc(nbytes))
+    GC.@preserve typed_data begin
+        unsafe_copyto!(c_ptr, pointer(typed_data), length(typed_data))
+    end
+    return c_ptr
+end
+c_convert(::Type{Ptr{T}}, value::Ptr{T}) where T = value
+c_convert(::Type{Ptr{T}}, value::Ptr) where T = convert(Ptr{T}, value)
+c_convert(::Type{T}, value) where T = convert(T, value)
+
+
+c_default(::Type{R}) where {R<:Number} = zero(R)
+c_default(::Type{Ptr{R}}) where R = Ptr{R}(0)
+c_default(::Type{NTuple{N, R}}) where {N, R} = ntuple(_ -> c_default(R), Val(N))
+
+function c_default(::Type{K}) where K
+    println(K)
+    if isbitstype(K) && !isprimitivetype(K)
+        args = map(c_default, fieldtypes(K))
+        return K(args...)
+    else
+        return zero(K)
+    end
+end
+
+macro c_struct(expr, destructor=nothing)
+    expr.head === :struct || error("Macro must be applied to a struct definition")
+    name = expr.args[2] isa Expr ? expr.args[2].args[1] : expr.args[2]
+
+    args = [a for a in expr.args[3].args if !(a isa LineNumberNode)]
+    fields = [a isa Expr && a.head === :(::) ? a.args[1] : a for a in args]
+    types  = [a isa Expr && a.head === :(::) ? a.args[2] : :Any for a in args]
+
+    kws = [Expr(:kw, f, :nothing) for f in fields]
+    converts = [:(c_convert($t, $f)) for (f, t) in zip(fields, types)]
+
+    return esc(quote
+        $expr
+        $name(; $(kws...)) = begin
+            obj = $name($(converts...))
+            obj
+        end
+    end)
+end
+
+@c_struct struct RayRectangle
     x::Cfloat        # Rectangle top-left corner position x
     y::Cfloat        # Rectangle top-left corner position y
     width::Cfloat    # Rectangle width
     height::Cfloat   # Rectangle height
 end
 
-struct RayImage
+@c_struct struct RayImage
     data::Ptr{Cvoid}         # Image raw data
     width::Cint              # Image base width
     height::Cint             # Image base height
@@ -13,9 +64,8 @@ struct RayImage
     format::Cint             # Data format (PixelFormat type)
 end
 
-struct RayTexture
+@c_struct struct RayTexture
     id::Cuint        # OpenGL texture id
-    width::Cint      # Texture base width
     height::Cint     # Texture base height
     mipmaps::Cint    # Mipmap levels, 1 by default
     format::Cint     # Data format (PixelFormat type)
@@ -24,7 +74,7 @@ end
 const RayTexture2D = RayTexture
 const RayTextureCubemap = RayTexture
 
-struct RayRenderTexture
+@c_struct struct RayRenderTexture
     id::Cuint                # OpenGL framebuffer object id
     texture::RayTexture      # Color buffer attachment texture
     depth::RayTexture        # Depth buffer attachment texture
@@ -32,7 +82,7 @@ end
 
 const RayRenderTexture2D = RayRenderTexture
 
-struct RayNPatchInfo
+@c_struct struct RayNPatchInfo
     source::RayRectangle     # Texture source rectangle
     left::Cint               # Left border offset
     top::Cint                # Top border offset
@@ -41,7 +91,7 @@ struct RayNPatchInfo
     layout::Cint             # Layout of the n-patch: 3x3, 1x3 or 3x1
 end
 
-struct RayGlyphInfo
+@c_struct struct RayGlyphInfo
    value::Cint              # Character value (Unicode)
    offsetX::Cint            # Character offset X when drawing
    offsetY::Cint            # Character offset Y when drawing
@@ -49,7 +99,7 @@ struct RayGlyphInfo
    image::RayImage          # Character image data
 end
 
-struct RayFont
+@c_struct struct RayFont
     baseSize::Cint                 # Base size (default chars height)
     glyphCount::Cint               # Number of glyph characters
     glyphPadding::Cint             # Padding around the glyph characters
@@ -58,7 +108,7 @@ struct RayFont
     glyphs::Ptr{RayGlyphInfo}      # Glyphs info data
 end
 
-struct RayMesh
+@c_struct struct RayMesh
     vertexCount::Cint        # Number of vertices stored in arrays
     triangleCount::Cint      # Number of triangles stored (indexed or not)
 
@@ -72,45 +122,47 @@ struct RayMesh
     indices::Ptr{Cuchar}         # Vertex indices (in case vertex data comes indexed)
 
     # Animation vertex data
+    boneCount::Cint              # Number of bones (MAX: 256 bones)
+    boneIndices::Ptr{Cuchar}     # Vertex bone indices, up to 4 bones influence by vertex (skinning) (shader-location = 6)
+    boneWeights::Ptr{Cfloat}     # Vertex bone weights, up to 4 bones influence by vertex (skinning) (shader-location = 7)
+
     animVertices::Ptr{Cfloat}    # Animated vertex positions (after bones transformations)
     animNormals::Ptr{Cfloat}     # Animated normals (after bones transformations)
-    boneIds::Ptr{Cuchar}         # Vertex bone ids, max 255 bone ids, up to 4 bones influence by vertex (skinning)
-    boneWeights::Ptr{Cfloat}     # Vertex bone weight, up to 4 bones influence by vertex (skinning)
 
     # OpenGL identifiers
     vaoId::Cuint                 # OpenGL Vertex Array Object id
     vboId::Ptr{Cuint}            # OpenGL Vertex Buffer Objects id (default vertex data)
 end
 
-struct RayShader
+@c_struct struct RayShader
     id::Cuint                    # Shader program id
     locs::Ptr{Cint}              # Shader locations array (RL_MAX_SHADER_LOCATIONS)
 end
 
-struct RayMaterialMap
+@c_struct struct RayMaterialMap
     texture::RayTexture        # Material map texture
     color::RayColor            # Material map color
     value::Cfloat              # Material map value
 end
 
-struct RayMaterial
+@c_struct struct RayMaterial
     shader::RayShader                # Material shader
     maps::Ptr{RayMaterialMap}        # Material maps array (MAX_MATERIAL_MAPS)
     params::NTuple{4, Cfloat}        # Material generic parameters (if required)
 end
 
-struct RayTransform
+@c_struct struct RayTransform
     translation::RayVector3     # Translation
     rotation::RayQuaternion     # Rotation
     scale::RayVector3           # Scale
 end
 
-struct RayBoneInfo
+@c_struct struct RayBoneInfo
     name::NTuple{32, Cchar}          # Bone name
     parent::Cint                     # Bone parent
 end
 
-struct RayModel
+@c_struct struct RayModel
     transform::RayMatrix              # Local transform matrix
 
     meshCount::Cint                   # Number of meshes
@@ -125,7 +177,7 @@ struct RayModel
     bindPose::Ptr{RayTransform}       # Bones base transformation (pose)
 end
 
-struct RayModelAnimation
+@c_struct struct RayModelAnimation
     boneCount::Cint                # Number of bones
     frameCount::Cint               # Number of animation frames
     bones::Ptr{RayBoneInfo}        # Bones information (skeleton)
@@ -133,24 +185,24 @@ struct RayModelAnimation
     framePoses::Ptr{Ptr{RayTransform}}        # Poses array by frame
 end
 
-struct Ray
+@c_struct struct Ray
     position::RayVector3        # Ray position (origin)
     direction::RayVector3       # Ray direction
 end
 
-struct RayCollision
+@c_struct struct RayCollision
     hit::Bool                  # Did the ray hit something?
     distance::Cfloat           # Distance to nearest hit
     point::RayVector3          # Point of nearest hit
     normal::RayVector3         # Surface normal of hit
 end
 
-struct RayBoundingBox
+@c_struct struct RayBoundingBox
     min::RayVector3     # Minimum vertex box-corner
     max::RayVector3     # Maximum vertex box-corner
 end
 
-struct RayWave
+@c_struct struct RayWave
     frameCount::Cuint      # Total number of frames (considering channels)
     sampleRate::Cuint      # Frequency (samples per second)
     sampleSize::Cuint      # Bit depth (bits per sample): 8, 16, 32 (24 not supported)
@@ -158,7 +210,7 @@ struct RayWave
     data::Ptr{Cvoid}       # Buffer data pointer
 end
 
-struct RayAudioStream
+@c_struct struct RayAudioStream
     # rAudioBuffer *buffer;       // Pointer to internal data used by the audio system
     buffer::Ptr{Cvoid}
     processor::Ptr{Cvoid}
@@ -168,12 +220,12 @@ struct RayAudioStream
     channels::Cuint      # Number of channels (1-mono, 2-stereo, ...)
 end
 
-struct RaySound
+@c_struct struct RaySound
     stream::RayAudioStream         # Audio stream
     frameCount::Cuint              # Total number of frames (considering channels)
 end
 
-struct RayMusic
+@c_struct struct RayMusic
     stream::RayAudioStream        # Audio stream
     frameCount::Cuint             # Total number of frames (considering channels)
     looping::Bool                 # Music looping enable
@@ -182,7 +234,7 @@ struct RayMusic
     ctxData::Ptr{Cvoid}           # Audio context data, depends on type
 end
 
-struct RayVrDeviceInfo
+@c_struct struct RayVrDeviceInfo
     hResolution::Cint                        # Horizontal resolution in pixels
     vResolution::Cint                        # Vertical resolution in pixels
     hScreenSize::Cfloat                      # Horizontal size in meters
@@ -195,7 +247,7 @@ struct RayVrDeviceInfo
     chromaAbCorrection::NTuple{4, Cfloat}    # Chromatic aberration correction parameters
 end
 
-struct RayVrStereoConfig
+@c_struct struct RayVrStereoConfig
     projection::NTuple{2, RayMatrix}           # VR projection matrices (per eye)
     viewOffset::NTuple{2, RayMatrix}           # VR view offset matrices (per eye)
     leftLensCenter::NTuple{2, Cfloat}          # VR left lens center
@@ -206,7 +258,7 @@ struct RayVrStereoConfig
     scaleIn::NTuple{2, Cfloat}                 # VR distortion scale in
 end
 
-struct RayGuiStyleProp
+@c_struct struct RayGuiStyleProp
     controlId::Cushort
     propertyId::Cushort
     propertyValue::Cint
@@ -223,7 +275,12 @@ Base.IndexStyle(::Type{<:DynamicArray}) = IndexLinear()
 
 function Base.getindex(A::DynamicArray{T}, i::Int) where T
     @boundscheck 1 <= i <= A.len || throw(BoundsError(A, i))
-    return Ptr{T}(A.ptr + (i - 1) * sizeof(T))
+    return unsafe_load(A.ptr, i)
+end
+
+function Base.setindex(A::DynamicArray{T}, i::Int, value::T) where T
+    @boundscheck 1 <= i <= A.len || throw(BoundsError(A, i))
+    return unsafe_store!(A.ptr, value, i)
 end
 
 const RayFilePathList = DynamicArray{Cstring}
