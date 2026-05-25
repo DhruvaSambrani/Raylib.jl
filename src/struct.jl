@@ -5,7 +5,7 @@ import Base: propertynames, getproperty, setproperty!
 struct MutableString
     buffer::Vector{UInt8}
 
-    function MutableString(s::String, maxsize::Int=256)
+    function MutableString(s::String, maxsize::Int = 256)
         buf = zeros(UInt8, maxsize)
         s_bytes = codeunits(s)
         len = min(length(s_bytes), maxsize - 1)
@@ -14,8 +14,10 @@ struct MutableString
     end
 end
 
-Base.unsafe_convert(::Type{Ptr{UInt8}}, ms::MutableString) = Base.unsafe_convert(Ptr{UInt8}, ms.buffer)
-Base.unsafe_convert(::Type{Cstring}, ms::MutableString) = Base.unsafe_convert(Cstring, ms.buffer)
+Base.unsafe_convert(::Type{Ptr{UInt8}}, ms::MutableString) =
+    Base.unsafe_convert(Ptr{UInt8}, ms.buffer)
+Base.unsafe_convert(::Type{Cstring}, ms::MutableString) =
+    Base.unsafe_convert(Cstring, ms.buffer)
 Base.String(ms::MutableString) = unsafe_string(pointer(ms.buffer))
 function Base.setindex!(ms::MutableString, s::String)
     fill!(ms.buffer, 0x00)
@@ -53,4 +55,3 @@ rayvector(v::Vararg{Real,4}) = RayVector4(v)
 
 const RayMatrix = SMatrix{4,4,Cfloat,16}
 const RayMatrix2x2 = SMatrix{2,2,Cfloat,4}
-

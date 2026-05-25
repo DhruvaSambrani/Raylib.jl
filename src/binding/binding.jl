@@ -5,15 +5,15 @@ using JSON
 using CEnum
 using StaticArrays
 
-import ..Raylib: RayColor, RayVector2, RayVector3, RayVector4, RayQuaternion,
-    RayMatrix, RayMatrix2x2
+import ..Raylib:
+    RayColor, RayVector2, RayVector3, RayVector4, RayQuaternion, RayMatrix, RayMatrix2x2
 
 include("./pointer.jl")
 include("./struct.jl")
 
 to_cstring(::Nothing) = C_NULL
 to_cstring(s::String) = s
-to_cstring(p::Union{Cstring, Ptr}) = p
+to_cstring(p::Union{Cstring,Ptr}) = p
 
 let
     parse_json(f) = JSON.parse(read(f, String))
@@ -29,87 +29,89 @@ let
             "Material",
             "Wave",
             "AudioStream",
-            "Music"
+            "Music",
         ])
 
         # Updated to safely handle `nothing` pointers for simple value-type 'char' fields
-        special_ptr = Dict{String, Any}(
-            "char"   => (name, n) -> isnothing(n) ? (name, n) : (n == 2 ? ("char **", 0) : ("$name *", n-1))
+        special_ptr = Dict{String,Any}(
+            "char" =>
+                (name, n) ->
+                    isnothing(n) ? (name, n) : (n == 2 ? ("char **", 0) : ("$name *", n-1)),
         )
 
-        typemap_dict = Dict{String, Any}(
-            "void"               => (:Cvoid, :Nothing),
-            "char"               => (:Cchar, :Char),
-            "char **"            => (:(Ptr{Cstring}), :(Vector{String})),
-            "int"                => (:Cint, :(Union{Integer, CEnum.Cenum})),
-            "long"               => (:Clong, :Integer),
-            "long long"          => (:Clonglong, :Integer),
-            "short"              => (:Cshort, :Integer),
-            "float"              => (:Cfloat, :Real),
-            "double"             => (:Cdouble, :Real),
-            "unsigned char"      => (:Cuchar, :UInt8),
-            "unsigned int"       => (:Cuint, :(Union{Integer, CEnum.Cenum})),
-            "unsigned long"      => (:Culong, :Integer),
+        typemap_dict = Dict{String,Any}(
+            "void" => (:Cvoid, :Nothing),
+            "char" => (:Cchar, :Char),
+            "char **" => (:(Ptr{Cstring}), :(Vector{String})),
+            "int" => (:Cint, :(Union{Integer,CEnum.Cenum})),
+            "long" => (:Clong, :Integer),
+            "long long" => (:Clonglong, :Integer),
+            "short" => (:Cshort, :Integer),
+            "float" => (:Cfloat, :Real),
+            "double" => (:Cdouble, :Real),
+            "unsigned char" => (:Cuchar, :UInt8),
+            "unsigned int" => (:Cuint, :(Union{Integer,CEnum.Cenum})),
+            "unsigned long" => (:Culong, :Integer),
             "unsigned long long" => (:Culonglong, :Integer),
-            "unsigned short"     => (:Cushort, :Integer),
-            "bool"               => (:Bool, :Bool, :Bool),
-            "float3"             => :(NTuple{3, Cfloat}),
-            "float16"            => :(NTuple{16, Cfloat}),
-            "Color"              => :RayColor,
-            "Camera"             => :RayCamera3D,
-            "Camera3D"           => :RayCamera3D,
-            "Camera2D"           => :RayCamera2D,
-            "Rectangle"          => :RayRectangle,
-            "Texture"            => :RayTexture,
-            "Texture2D"          => :RayTexture,
-            "TextureCubemap"     => :RayTexture,
-            "RenderTexture"      => :RayRenderTexture,
-            "RenderTexture2D"    => :RayRenderTexture,
-            "NPatchInfo"         => :RayNPatchInfo,
-            "Image"              => :RayImage,
-            "GlyphInfo"          => :RayGlyphInfo,
-            "Font"               => :RayFont,
-            "Mesh"               => :RayMesh,
-            "Shader"             => :RayShader,
-            "MaterialMap"        => :RayMaterialMap,
-            "Material"           => :RayMaterial,
-            "Transform"          => :RayTransform,
-            "BoneInfo"           => :RayBoneInfo,
-            "Model"              => :RayModel,
-            "ModelAnimation"     => :RayModelAnimation,
-            "Ray"                => :Ray,
-            "RayCollision"       => :RayCollision,
-            "BoundingBox"        => :RayBoundingBox,
-            "Wave"               => :RayWave,
-            "AudioStream"        => :RayAudioStream,
-            "Sound"              => :RaySound,
-            "Music"              => :RayMusic,
-            "FilePathList"       => :RayFilePathList,
-            "VrDeviceInfo"       => :RayVrDeviceInfo,
-            "VrStereoConfig"     => :RayVrStereoConfig,
-            "Matrix"             => :RayMatrix,
-            "Matrix2x2"          => :RayMatrix2x2,
-            "Vector2"            => (:RayVector2, :(StaticVector{2})),
-            "Vector3"            => (:RayVector3, :(StaticVector{3})),
-            "Vector4"            => (:RayVector4, :(StaticVector{4})),
-            "Quaternion"         => (:RayVector4, :(StaticVector{4})),
-            "GuiStyleProp"       => :RayGuiStyleProp,
-            "rAudioBuffer"       => :Cvoid,
-            "rAudioProcessor"    => :Cvoid,
-            "ModelAnimPose"      => :(Ptr{RayTransform}),
-            "TraceLogCallback"     => :(Ptr{Cvoid}),
+            "unsigned short" => (:Cushort, :Integer),
+            "bool" => (:Bool, :Bool, :Bool),
+            "float3" => :(NTuple{3,Cfloat}),
+            "float16" => :(NTuple{16,Cfloat}),
+            "Color" => :RayColor,
+            "Camera" => :RayCamera3D,
+            "Camera3D" => :RayCamera3D,
+            "Camera2D" => :RayCamera2D,
+            "Rectangle" => :RayRectangle,
+            "Texture" => :RayTexture,
+            "Texture2D" => :RayTexture,
+            "TextureCubemap" => :RayTexture,
+            "RenderTexture" => :RayRenderTexture,
+            "RenderTexture2D" => :RayRenderTexture,
+            "NPatchInfo" => :RayNPatchInfo,
+            "Image" => :RayImage,
+            "GlyphInfo" => :RayGlyphInfo,
+            "Font" => :RayFont,
+            "Mesh" => :RayMesh,
+            "Shader" => :RayShader,
+            "MaterialMap" => :RayMaterialMap,
+            "Material" => :RayMaterial,
+            "Transform" => :RayTransform,
+            "BoneInfo" => :RayBoneInfo,
+            "Model" => :RayModel,
+            "ModelAnimation" => :RayModelAnimation,
+            "Ray" => :Ray,
+            "RayCollision" => :RayCollision,
+            "BoundingBox" => :RayBoundingBox,
+            "Wave" => :RayWave,
+            "AudioStream" => :RayAudioStream,
+            "Sound" => :RaySound,
+            "Music" => :RayMusic,
+            "FilePathList" => :RayFilePathList,
+            "VrDeviceInfo" => :RayVrDeviceInfo,
+            "VrStereoConfig" => :RayVrStereoConfig,
+            "Matrix" => :RayMatrix,
+            "Matrix2x2" => :RayMatrix2x2,
+            "Vector2" => (:RayVector2, :(StaticVector{2})),
+            "Vector3" => (:RayVector3, :(StaticVector{3})),
+            "Vector4" => (:RayVector4, :(StaticVector{4})),
+            "Quaternion" => (:RayVector4, :(StaticVector{4})),
+            "GuiStyleProp" => :RayGuiStyleProp,
+            "rAudioBuffer" => :Cvoid,
+            "rAudioProcessor" => :Cvoid,
+            "ModelAnimPose" => :(Ptr{RayTransform}),
+            "TraceLogCallback" => :(Ptr{Cvoid}),
             "LoadFileDataCallback" => :(Ptr{Cvoid}),
             "SaveFileDataCallback" => :(Ptr{Cvoid}),
             "LoadFileTextCallback" => :(Ptr{Cvoid}),
             "SaveFileTextCallback" => :(Ptr{Cvoid}),
-            "AudioCallback"        => :(Ptr{Cvoid}),
+            "AudioCallback" => :(Ptr{Cvoid}),
         )
 
         maybe(f, x) = f(x)
         maybe(f, ::Nothing) = nothing
         maybe(f) = Base.Fix1(maybe, f)
 
-        function nested_X(X, T, n, abs=false)
+        function nested_X(X, T, n, abs = false)
             P = T
             for i = 1:n
                 if abs
@@ -119,8 +121,9 @@ let
             end
             return P
         end
-        nested_ptr(T, n, abs=false) = nested_X(:Ptr, T, n, abs)
-        nested_refptr(T, n, abs=false) = n >= 1 ? nested_X(:Ref, nested_X(:Ptr, T, n-1, abs), 1, abs) : T
+        nested_ptr(T, n, abs = false) = nested_X(:Ptr, T, n, abs)
+        nested_refptr(T, n, abs = false) =
+            n >= 1 ? nested_X(:Ref, nested_X(:Ptr, T, n-1, abs), 1, abs) : T
 
         # Updated regex to capture inline array sizes, e.g., "float[4]" -> arr_sz = "4"
         function parse_type(type_s)
@@ -143,7 +146,7 @@ let
         function x_typemap_base(i, iscst, type_name)
             if type_name == "char *"
                 if iscst || i == 3  # If it's const, or if it's a return type
-                    return i == 1 ? :Cstring : (i == 2 ? :(Union{String, Nothing}) : :String)
+                    return i == 1 ? :Cstring : (i == 2 ? :(Union{String,Nothing}) : :String)
                 else
                     return i == 1 ? :(Ptr{UInt8}) : :(MutableString)
                 end
@@ -172,7 +175,7 @@ let
 
             # Wrap in NTuple if we parsed a fixed array size
             if !isnothing(sz)
-                T = :(NTuple{$sz, $T})
+                T = :(NTuple{$sz,$T})
             end
 
             # Wrap in Ptr or Ref if we parsed asterisk pointer depth
@@ -182,21 +185,27 @@ let
                 catch
                     return nothing
                 end
-                T = isone(i) ? nested_ptr(T, nptr, isabs) : nested_refptr(T, nptr, isabs)
+                T =
+                    isone(i) ? nested_ptr(T, nptr, isabs) : nested_refptr(T, nptr, isabs)
             end
 
             return T
         end
 
         c_typemap(iscst, type_name, sz, nptr) = x_typemap(1, iscst, type_name, sz, nptr)
-        jl_typemap(iscst, type_name, sz, nptr) = x_typemap(2, iscst, type_name, sz, nptr)
-        jlret_typemap(iscst, type_name, sz, nptr) = x_typemap(3, iscst, type_name, sz, nptr)
+        jl_typemap(iscst, type_name, sz, nptr) =
+            x_typemap(2, iscst, type_name, sz, nptr)
+        jlret_typemap(iscst, type_name, sz, nptr) =
+            x_typemap(3, iscst, type_name, sz, nptr)
 
         parse_c_type(s) = maybe(x->c_typemap(x...), parse_type(s))
         parse_jl_type(s) = maybe(x->jl_typemap(x...), parse_type(s))
         parse_jlret_type(s) = maybe(x->jlret_typemap(x...), parse_type(s))
 
-        valid_name(s) = (m = match(r"^[_a-zA-Z][_a-zA-Z0-9]*$", s); isnothing(m) ? nothing : Symbol(s))
+        valid_name(s) = (
+            m = match(r"^[_a-zA-Z][_a-zA-Z0-9]*$", s);
+            isnothing(m) ? nothing : Symbol(s)
+        )
 
         function gen_enum(def)
             name = Symbol(def["name"])
@@ -207,13 +216,11 @@ let
             values_ex = map(values) do v
                 i = v.value
                 n = Symbol(v.name)
-                isnothing(i) ?
-                    :($n) :
-                    :($n = $i)
+                isnothing(i) ? :($n) : :($n = $i)
             end
             body = Expr(:block, values_ex...)
 
-            return Expr(:macrocall, Symbol("@cenum"),  nothing, name, body)
+            return Expr(:macrocall, Symbol("@cenum"), nothing, name, body)
         end
 
         function typeassert_expr(name, type)
@@ -251,7 +258,7 @@ let
             return "    $code_s\n\n$desc"
         end
 
-        function gen_func(def, use_desc=true)
+        function gen_func(def, use_desc = true)
             name = Symbol(def["name"])
             rT = def["returnType"]
             desc = use_desc ? def["description"] : ""
@@ -274,7 +281,7 @@ let
             end
             c_rT = parse_c_type(rT)
 
-            (any(isnothing, c_param_ex) || isnothing(c_rT))  && return nothing
+            (any(isnothing, c_param_ex) || isnothing(c_rT)) && return nothing
 
             jl_param_ex = if hasparams
                 map(params) do p
@@ -291,14 +298,10 @@ let
             jl_rT = parse_jlret_type(rT)
 
             c_sig = typeassert_expr(
-                Expr(
-                    :call,
-                    Expr(:., :libraylib, QuoteNode(name)),
-                    c_param_ex...
-                ),
-                c_rT
+                Expr(:call, Expr(:., :libraylib, QuoteNode(name)), c_param_ex...),
+                c_rT,
             )
-            call_ex = Expr(:macrocall, Symbol("@ccall"),  nothing, c_sig)
+            call_ex = Expr(:macrocall, Symbol("@ccall"), nothing, c_sig)
 
             jl_call = Expr(:call, name, jl_param_ex...)
             jl_sig = isnothing(jl_rT) ? jl_call : typeassert_expr(jl_call, jl_rT)
@@ -313,7 +316,7 @@ let
             end
         end
 
-        function gen(f, lib, s, defs, nf = Symbol, depth=1)
+        function gen(f, lib, s, defs, nf = Symbol, depth = 1)
             type = defs[("$(lowercase(string(s)))s")]
             n_entry = length(type)
             iszero(n_entry) && return nothing
@@ -362,15 +365,12 @@ let
 
     apis = map(
         f->joinpath(@__DIR__, "../../api_reference/", f),
-        ("raylib_api.json", "rlgl_api.json",
-         "raymath_api.json", "raygui_api.json")
+        ("raylib_api.json", "rlgl_api.json", "raymath_api.json", "raygui_api.json"),
     )
 
-    jsons = Dict(
-        map(apis) do api_file
-          api_file=>parse_json(api_file)
-        end
-    )
+    jsons = Dict(map(apis) do api_file
+        api_file=>parse_json(api_file)
+    end)
 
 
     for api in apis
@@ -381,7 +381,14 @@ let
         gen(gen_enum, lib, :Enum, defs)
 
 
-        gen(gen_struct, lib, :Struct, defs, s -> Symbol(startswith(s, "Ray") ? s : "Ray" * s), 2)
+        gen(
+            gen_struct,
+            lib,
+            :Struct,
+            defs,
+            s -> Symbol(startswith(s, "Ray") ? s : "Ray" * s),
+            2,
+        )
 
         if lib == "raylib"
             gen(gen_func, lib, :Function, defs)
@@ -396,8 +403,8 @@ const RayCamera = RayCamera3D
 const RayTexture2D = RayTexture
 const RayRenderTexture2D = RayRenderTexture
 
-let allsym = filter(names(@__MODULE__; all=true, imported=true)) do sym
-      Base.isidentifier(sym) && sym ∉ (Symbol(@__MODULE__), :include, :eval)
+let allsym = filter(names(@__MODULE__; all = true, imported = true)) do sym
+        Base.isidentifier(sym) && sym ∉ (Symbol(@__MODULE__), :include, :eval)
     end
     @eval export $(allsym...)
 end

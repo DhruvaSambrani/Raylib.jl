@@ -206,12 +206,12 @@ function EaseElasticIn(t::Real, b::Real, c::Real, d::Real)
     s = p/4
     postFix = a * 2^(10(t -= 1))
 
-    return -(postFix * sin((t * d - s) * 2π/p )) + b
+    return -(postFix * sin((t * d - s) * 2π/p)) + b
 end
 
 function EaseElasticOut(t::Real, b::Real, c::Real, d::Real)
     (t ≈ 0) && (return b)
-    (t  ≈ d) && (return b + c)
+    (t ≈ d) && (return b + c)
     t /= d
 
     p = 0.3d
