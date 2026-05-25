@@ -4,7 +4,7 @@ const GLSL_VERSION = 330
 
 function build_font(filedata, baseSize, glyphCount, fonttype, padding, packmeth)
     null = convert(Ptr{Cint}, C_NULL)
-    glyphs_ptr = Raylib.LoadFontData(pointer(filedata), length(filedata), 16, null, glyphCount, Int(fonttype))
+    glyphs_ptr = Raylib.LoadFontData(pointer(filedata), length(filedata), 16, null, 0, fonttype, Ref{Int32}(glyphCount))
     recs = Ref{Ptr{Raylib.RayRectangle}}()
     atlas = Raylib.GenImageFontAtlas(glyphs_ptr, recs, 95, 16, padding, packmeth)
     recs_ptr = recs[]

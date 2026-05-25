@@ -6,7 +6,7 @@ const screenHeight = 450
 function main()
     Raylib.InitWindow(
         screenWidth, screenHeight,
-        "raylib [core] example - keyboard input"
+        "raylib [core] example - mouse input"
     )
 
     ballColor = Raylib.DARKBLUE
@@ -35,7 +35,7 @@ function main()
         # draw
         Raylib.BeginDrawing()
         Raylib.ClearBackground(Raylib.RAYWHITE)
-        Raylib.DrawText("move the ball with arrow keys", 10, 10, 20, Raylib.DARKGRAY)
+        Raylib.DrawText("move the ball with mouse, press buttons to change color", 10, 10, 20, Raylib.DARKGRAY)
         Raylib.DrawCircleV(ballPosition, 50, ballColor)
         Raylib.EndDrawing()
     end

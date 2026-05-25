@@ -7,6 +7,25 @@ function vector2rotate(v, angle)
     return rayvector(x, y)
 end
 
+function draw_texture_poly(texture, center, points, texcoords, point_count, tint)
+    Raylib.rlSetTexture(texture.id)
+    Raylib.rlBegin(0x0004)
+    Raylib.rlColor4ub(reinterpret.(UInt8, (tint.r, tint.g, tint.b, tint.alpha))...)
+
+    for i in point_count-1:-1:1
+        Raylib.rlTexCoord2f(0.5, 0.5)
+        Raylib.rlVertex2f(center.x, center.y)
+
+        Raylib.rlTexCoord2f(texcoords[i]...)
+        Raylib.rlVertex2f((points[i] + center)...)
+
+        Raylib.rlTexCoord2f(texcoords[i + 1]...)
+        Raylib.rlVertex2f((points[i + 1] + center)...)
+    end
+    Raylib.rlEnd()
+    Raylib.rlSetTexture(0)
+end
+
 function main()
     screenWidth = 800
     screenHeight = 450
@@ -31,7 +50,7 @@ function main()
 
     points = Vector{RayVector2}(undef, MAX_POINTS)
     for i = 1:MAX_POINTS
-        points[i] = (texcoords[i] .- 0.5) .* 256
+        points[i] = (texcoords[i] .- 0.5f0) .* 256
     end
 
     positions = copy(points)
@@ -49,9 +68,9 @@ function main()
         Raylib.BeginDrawing()
         Raylib.ClearBackground(Raylib.RAYWHITE)
         Raylib.DrawText("textured polygon", 20, 20, 20, Raylib.DARKGRAY)
-        Raylib.DrawTexturePoly(
+        draw_texture_poly(
             texture, rayvector(Raylib.GetScreenWidth()/2, Raylib.GetScreenHeight()/2),
-            pointer(positions), pointer(texcoords), MAX_POINTS, Raylib.WHITE
+            positions, texcoords, MAX_POINTS, Raylib.WHITE
         )
         Raylib.EndDrawing()
     end

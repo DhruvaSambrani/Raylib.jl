@@ -67,3 +67,19 @@ end
 for func in :(SetMouseCursor,).args
     @eval Binding.$func(c::MouseCursor) = $func(convert(Integer, c))
 end
+
+Base.length(list::RayFilePathList) = Int(list.count)
+Base.size(list::RayFilePathList) = (Int(list.count),)
+Base.firstindex(list::RayFilePathList) = 1
+Base.lastindex(list::RayFilePathList) = Int(list.count)
+
+function Base.getindex(list::RayFilePathList, i::Int)
+    @boundscheck 1 <= i <= Int(list.count) || throw(BoundsError(list, i))
+    ptr = unsafe_load(list.paths, i)
+    return unsafe_string(ptr)
+end
+
+function Base.iterate(list::RayFilePathList, state=1)
+    state > Int(list.count) && return nothing
+    return (list[state], state + 1)
+end

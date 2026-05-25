@@ -55,5 +55,3 @@ end
 function Base.unsafe_convert(::Type{Ptr{Cstring}}, x::Tuple{Vector{Cstring},Vector{String}})
     return Base.unsafe_convert(Ptr{Cstring}, x[1])
 end
-
-const RayFilePathList = DynamicRefArray{Cstring}

@@ -92,10 +92,10 @@ function UpdateCameraCenterInsideMap(
     maxbound = Raylib.GetWorldToScreen2D(rayvector(maxX, maxY), camera)
     minbound = Raylib.GetWorldToScreen2D(rayvector(minX, minY), camera)
 
-    (maxbound.x < width)  && (camera.offset_x = width  - (maxbound.x - width/2))
-    (maxbound.y < height) && (camera.offset_y = height - (maxbound.y - height/2))
-    (minbound.x > 0) && (camera.offset_x = width/2  - minbound.x)
-    (minbound.y > 0) && (camera.offset_y = height/2 - minbound.y)
+    (maxbound.x < width)  && (Raylib.@mutate(camera.offset.x = width  - (maxbound.x - width/2)))
+    (maxbound.y < height) && (Raylib.@mutate(camera.offset.y = height - (maxbound.y - height/2)))
+    (minbound.x > 0) && (Raylib.@mutate(camera.offset.x = width/2  - minbound.x))
+    (minbound.y > 0) && (Raylib.@mutate(camera.offset.y = height/2 - minbound.y))
     return camera
 end
 
@@ -183,10 +183,10 @@ function UpdateCameraPlayerBoundsPush(
     bboxWorldMax = Raylib.GetScreenToWorld2D(worldbox .* (1 .+ bbox), camera)
     camera.offset = worldbox .* (1 .- bbox)
 
-    (player.pos_x < bboxWorldMin.x) &&  (camera.target_x = player.pos_x)
-    (player.pos_y < bboxWorldMin.y) &&  (camera.target_y = player.pos_y)
-    (player.pos_x > bboxWorldMax.x) &&  (camera.target_x = bboxWorldMin.x + player.pos_x - bboxWorldMax.x)
-    (player.pos_y > bboxWorldMax.y) &&  (camera.target_y = bboxWorldMin.y + player.pos_y - bboxWorldMax.y)
+    (player.pos_x < bboxWorldMin.x) &&  Raylib.@mutate(camera.target.x = player.pos_x)
+    (player.pos_y < bboxWorldMin.y) &&  Raylib.@mutate(camera.target.y = player.pos_y)
+    (player.pos_x > bboxWorldMax.x) &&  Raylib.@mutate(camera.target.x = bboxWorldMin.x + player.pos_x - bboxWorldMax.x)
+    (player.pos_y > bboxWorldMax.y) &&  Raylib.@mutate(camera.target.y = bboxWorldMin.y + player.pos_y - bboxWorldMax.y)
 
     return camera
 end

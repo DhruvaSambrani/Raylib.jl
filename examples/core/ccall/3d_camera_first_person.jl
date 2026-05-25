@@ -53,6 +53,8 @@ function main()
         0,
     ))
 
+    @ccall libraylib.DisableCursor()::Cvoid
+
     heights = Vector{Cfloat}(undef, 20)
     positions = Vector{RayVector3}(undef, 20)
     colors = Vector{RayColor}(undef, 20)
@@ -72,11 +74,10 @@ function main()
         )
     end
 
-    @ccall libraylib.UpdateCamera(camera[]::RayCamera3D, 3::Cint)::Cvoid
     @ccall libraylib.SetTargetFPS(60::Cint)::Cvoid
 
-    while iszero(@ccall libraylib.WindowShouldClose()::Cint)
-        @ccall libraylib.UpdateCamera(camera::Ref{RayCamera3D})::Cvoid
+    while !(@ccall libraylib.WindowShouldClose()::Bool)
+        @ccall libraylib.UpdateCamera(camera::Ref{RayCamera3D}, 3::Cint)::Cvoid
 
         @ccall libraylib.BeginDrawing()::Cvoid
         @ccall libraylib.ClearBackground(RAYWHITE::RayColor)::Cvoid
