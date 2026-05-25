@@ -25,9 +25,9 @@ Base.propertynames(::RayModel) = [fieldnames(RayModel); [:meshes_array, :materia
 
 function Base.getproperty(model::RayModel, name::Symbol)
     if name === :materials_array
-        return DynamicArray(model.materials, model.materialCount)
+        return DynamicRefArray(model.materials, model.materialCount)
     elseif name === :meshes_array
-        return DynamicArray(model.meshes, model.meshCount) 
+        return DynamicRefArray(model.meshes, model.meshCount) 
     else
         return getfield(model, name)
     end

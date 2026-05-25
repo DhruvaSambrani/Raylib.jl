@@ -6,10 +6,9 @@ using CEnum
 using StaticArrays
 
 import ..Raylib: RayColor, RayVector2, RayVector3, RayVector4, RayQuaternion,
-    RayMatrix, RayMatrix2x2, RayCamera, RayCamera2D, RayCamera3D
+    RayMatrix, RayMatrix2x2
 
-
-include("./enum.jl")
+include("./pointer.jl")
 include("./struct.jl")
 
 to_cstring(::Nothing) = C_NULL
@@ -19,9 +18,25 @@ to_cstring(p::Union{Cstring, Ptr}) = p
 let
     parse_json(f) = JSON.parse(read(f, String))
     builder = function ()
+        # Define which C struct types must be generated as `mutable struct`
+        MUTABLE_TYPES = Set([
+            "Mesh",
+            "Image",
+            "Camera",
+            "Camera3D",
+            "Camera2D",
+            "Model",
+            "Material",
+            "Wave",
+            "AudioStream",
+            "Music"
+        ])
+
+        # Updated to safely handle `nothing` pointers for simple value-type 'char' fields
         special_ptr = Dict{String, Any}(
-            "char"   => (name, n) -> n == 2 ? ("char **", 0) : ("$name *", n-1)
+            "char"   => (name, n) -> isnothing(n) ? (name, n) : (n == 2 ? ("char **", 0) : ("$name *", n-1))
         )
+
         typemap_dict = Dict{String, Any}(
             "void"               => (:Cvoid, :Nothing),
             "char"               => (:Cchar, :Char),
@@ -79,11 +94,15 @@ let
             "Vector4"            => (:RayVector4, :(StaticVector{4})),
             "Quaternion"         => (:RayVector4, :(StaticVector{4})),
             "GuiStyleProp"       => :RayGuiStyleProp,
-            "PhysicsShapeType"   => :PhysicsShapeType,
-            "PhysicsVertexData"  => :RayPhysicsVertexData,
-            "PhysicsShape"       => :RayPhysicsShape,
-            "PhysicsBodyData"    => :RayPhysicsBodyData,
-            "PhysicsBody"        => :(Ptr{RayPhysicsBodyData}),
+            "rAudioBuffer"       => :Cvoid,
+            "rAudioProcessor"    => :Cvoid,
+            "ModelAnimPose"      => :(Ptr{RayTransform}),
+            "TraceLogCallback"     => :(Ptr{Cvoid}),
+            "LoadFileDataCallback" => :(Ptr{Cvoid}),
+            "SaveFileDataCallback" => :(Ptr{Cvoid}),
+            "LoadFileTextCallback" => :(Ptr{Cvoid}),
+            "SaveFileTextCallback" => :(Ptr{Cvoid}),
+            "AudioCallback"        => :(Ptr{Cvoid}),
         )
 
         maybe(f, x) = f(x)
@@ -103,22 +122,25 @@ let
         nested_ptr(T, n, abs=false) = nested_X(:Ptr, T, n, abs)
         nested_refptr(T, n, abs=false) = n >= 1 ? nested_X(:Ref, nested_X(:Ptr, T, n-1, abs), 1, abs) : T
 
+        # Updated regex to capture inline array sizes, e.g., "float[4]" -> arr_sz = "4"
         function parse_type(type_s)
-            m = match(r"(const )?([^\*]+)(\*+)?", type_s)
+            m = match(r"(const )?([^\[\*]+)(?:\[(\d+)\])?(\*+)?", type_s)
             isnothing(m) && return nothing
 
-            cst, type_name, stars = map(maybe(strip), m.captures)
+            cst, type_name, arr_sz, stars = map(maybe(strip), m.captures)
             iscst = !isnothing(cst)
             nptr = maybe(length, stars)
+            sz = isnothing(arr_sz) ? nothing : parse(Int, arr_sz)
 
-            return iscst, type_name, nptr
+            return iscst, type_name, sz, nptr
         end
 
         get_type(x::Tuple, n, i) = i <= length(x) ? x[i] : nothing
         get_type(x, n, i) = x
         get_type(x::Function, n, i) = x(n, i)
 
-        function x_typemap(i, iscst, type_name, ::Nothing)
+        # Resolves the raw base type matching without arrays or pointer modifications
+        function x_typemap_base(i, iscst, type_name)
             if type_name == "char *"
                 if iscst || i == 3  # If it's const, or if it's a return type
                     return i == 1 ? :Cstring : (i == 2 ? :(Union{String, Nothing}) : :String)
@@ -136,24 +158,39 @@ let
             return T
         end
 
-        function x_typemap(i, iscst, type_name, nptr)
+        # Composes the final type by applying NTuples and/or pointer wrappers
+        function x_typemap(i, iscst, type_name, sz, nptr)
             if haskey(special_ptr, type_name)
                 type_name, nptr = special_ptr[type_name](type_name, nptr)
             end
 
-            T = x_typemap(i, iscst, type_name, nothing)
+            is_pointer = !isnothing(nptr) && nptr > 0
+            target_i = (!isnothing(sz) || is_pointer) ? 1 : i
+
+            T = x_typemap_base(target_i, iscst, type_name)
             isnothing(T) && return nothing
 
-            isabs = try
-                isabstracttype(eval(T))
-            catch
-                return nothing
+            # Wrap in NTuple if we parsed a fixed array size
+            if !isnothing(sz)
+                T = :(NTuple{$sz, $T})
             end
-            return isone(i) ? nested_ptr(T, nptr, isabs) : nested_refptr(T, nptr, isabs)
+
+            # Wrap in Ptr or Ref if we parsed asterisk pointer depth
+            if !isnothing(nptr)
+                isabs = try
+                    isabstracttype(eval(T))
+                catch
+                    return nothing
+                end
+                T = isone(i) ? nested_ptr(T, nptr, isabs) : nested_refptr(T, nptr, isabs)
+            end
+
+            return T
         end
-        c_typemap(iscst, type_name, nptr) = x_typemap(1, iscst, type_name, nptr)
-        jl_typemap(iscst, type_name, nptr) = x_typemap(2, iscst, type_name, nptr)
-        jlret_typemap(iscst, type_name, nptr) = x_typemap(3, iscst, type_name, nptr)
+
+        c_typemap(iscst, type_name, sz, nptr) = x_typemap(1, iscst, type_name, sz, nptr)
+        jl_typemap(iscst, type_name, sz, nptr) = x_typemap(2, iscst, type_name, sz, nptr)
+        jlret_typemap(iscst, type_name, sz, nptr) = x_typemap(3, iscst, type_name, sz, nptr)
 
         parse_c_type(s) = maybe(x->c_typemap(x...), parse_type(s))
         parse_jl_type(s) = maybe(x->jl_typemap(x...), parse_type(s))
@@ -163,7 +200,7 @@ let
 
         function gen_enum(def)
             name = Symbol(def["name"])
-            vcount = length(def["values"]) 
+            vcount = length(def["values"])
             iszero(vcount) && return nothing
             values = def["values"]
 
@@ -195,8 +232,14 @@ let
             any(isnothing, fields_ex) && return nothing
 
             body = Expr(:block, fields_ex...)
-            name_ex = Symbol("Ray$name")
-            Expr(:struct, false, name_ex, body)
+            prefix = startswith(name, "Ray") ? "" : "Ray"
+            name_ex = Symbol(prefix * name)
+
+            # Dynamically determine if this struct should be mutable
+            is_mutable = name in MUTABLE_TYPES
+            struct_expr = Expr(:struct, is_mutable, name_ex, body)
+
+            return Expr(:macrocall, Symbol("@c_struct"), nothing, struct_expr)
         end
 
         jl_type_handler(_, ex) = ex
@@ -210,7 +253,7 @@ let
 
         function gen_func(def, use_desc=true)
             name = Symbol(def["name"])
-            rT = def["returnType"] 
+            rT = def["returnType"]
             desc = use_desc ? def["description"] : ""
             hasparams = haskey(def, "params")
             params = hasparams ? def["params"] : ()
@@ -233,7 +276,7 @@ let
 
             (any(isnothing, c_param_ex) || isnothing(c_rT))  && return nothing
 
-            jl_param_ex = if hasparams 
+            jl_param_ex = if hasparams
                 map(params) do p
                     if occursin("void *", p.type)
                         T = nothing
@@ -337,7 +380,8 @@ let
         defs = json
         gen(gen_enum, lib, :Enum, defs)
 
-        gen(gen_struct, lib, :Struct, defs, s->Symbol("Ray$s"), 2)
+
+        gen(gen_struct, lib, :Struct, defs, s -> Symbol(startswith(s, "Ray") ? s : "Ray" * s), 2)
 
         if lib == "raylib"
             gen(gen_func, lib, :Function, defs)
@@ -347,6 +391,10 @@ let
     end
 
 end
+
+const RayCamera = RayCamera3D
+const RayTexture2D = RayTexture
+const RayRenderTexture2D = RayRenderTexture
 
 let allsym = filter(names(@__MODULE__; all=true, imported=true)) do sym
       Base.isidentifier(sym) && sym ∉ (Symbol(@__MODULE__), :include, :eval)
