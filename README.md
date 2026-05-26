@@ -9,4 +9,4 @@ This project is a wrapping of [Raylib](https://www.raylib.com/), which is a simp
 
 ## Raylib architecture
 
-![](https://www.raylib.com/images/raylib_architecture_v4.0.png)
+![](https://www.raylib.com/images/raylib_architecture_v6.0.png)

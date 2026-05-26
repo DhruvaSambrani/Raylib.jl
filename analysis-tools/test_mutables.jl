@@ -20,7 +20,7 @@ end
 function run_verification()
     apis = map(
         f -> joinpath(@__DIR__, "../api_reference/", f),
-        ("raylib_api.json", "rlgl_api.json", "raymath_api.json", "raygui_api.json")
+        ("raylib_api.json", "rlgl_api.json", "raymath_api.json", "raygui_api.json"),
     )
 
     println("Loading API JSONs...")
@@ -35,7 +35,7 @@ function run_verification()
 
     # 1. Collect all valid C struct names and aliases from the JSON files
     struct_names = Set{String}()
-    alias_map = Dict{String, String}() # Maps alias -> base struct
+    alias_map = Dict{String,String}() # Maps alias -> base struct
 
     for api in apis
         json = jsons[api]
@@ -52,11 +52,13 @@ function run_verification()
             end
         end
     end
-    println("✓ Discovered $(length(struct_names)) base structs and aliases in the API schemas.")
+    println(
+        "✓ Discovered $(length(struct_names)) base structs and aliases in the API schemas.",
+    )
 
     # 2. Scan function parameters for non-const pointers to known structs
     MUTABLE_TYPES = Set{String}()
-    mutable_triggers = Dict{String, Vector{String}}()
+    mutable_triggers = Dict{String,Vector{String}}()
 
     for api in apis
         json = jsons[api]
@@ -67,11 +69,11 @@ function run_verification()
                 parsed = parse_type(p["type"])
                 isnothing(parsed) && continue
                 iscst, type_name, sz, nptr = parsed
-                
+
                 # If we find a non-const, non-array pointer to a known struct/alias
                 if !iscst && !isnothing(nptr) && nptr == 1 && type_name in struct_names
                     push!(MUTABLE_TYPES, type_name)
-                    
+
                     trigger = "$(f["name"])($(p["name"]): $(p["type"]))"
                     push!(get!(mutable_triggers, type_name, String[]), trigger)
                 end
@@ -92,10 +94,8 @@ function run_verification()
 
     # 4. Strict overrides: Types we absolutely must keep immutable
     # for performance, stack-passing, and StaticArrays integration.
-    IMMUTABLE_OVERRIDES = Set([
-        "Color", "Vector2", "Vector3", "Vector4", "Quaternion", 
-        "Matrix", "Rectangle"
-    ])
+    IMMUTABLE_OVERRIDES =
+        Set(["Color", "Vector2", "Vector3", "Vector4", "Quaternion", "Matrix", "Rectangle"])
 
     setdiff!(MUTABLE_TYPES, IMMUTABLE_OVERRIDES)
 
@@ -103,8 +103,8 @@ function run_verification()
     println("\n==============================================")
     println("      MUTABLE STRUCT DISCOVERY REPORT         ")
     println("==============================================")
-    
-    for (struct_name, triggers) in sort(collect(mutable_triggers), by=x->x[1])
+
+    for (struct_name, triggers) in sort(collect(mutable_triggers), by = x->x[1])
         if struct_name in IMMUTABLE_OVERRIDES
             println("• Struct: $struct_name → [OVERRIDDEN TO IMMUTABLE]")
             continue

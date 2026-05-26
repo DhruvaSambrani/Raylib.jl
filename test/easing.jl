@@ -15,7 +15,12 @@
     currentPositionX = startPositionX
 
     while (currentPositionX < finalPositionX)
-        currentPositionX = Raylib.EaseSineIn(currentTime, startPositionX, finalPositionX - startPositionX, duration)
+        currentPositionX = Raylib.EaseSineIn(
+            currentTime,
+            startPositionX,
+            finalPositionX - startPositionX,
+            duration,
+        )
         currentTime += 1
         @show (currentTime, currentPositionX)
     end

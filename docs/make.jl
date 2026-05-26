@@ -1,26 +1,20 @@
 using Raylib
 using Documenter
 
-DocMeta.setdocmeta!(Raylib, :DocTestSetup, :(using Raylib); recursive=true)
+DocMeta.setdocmeta!(Raylib, :DocTestSetup, :(using Raylib); recursive = true)
 
 makedocs(;
-    modules=[Raylib],
-    authors="chengchingwen <adgjl5645@hotmail.com> and contributors",
-    repo="https://github.com/chengchingwen/Raylib.jl/blob/{commit}{path}#{line}",
-    sitename="Raylib.jl",
-    format=Documenter.HTML(;
-        prettyurls=get(ENV, "CI", "false") == "true",
-        canonical="https://chengchingwen.github.io/Raylib.jl",
-        assets=String[],
-        size_threshold=1_000_000
+    modules = [Raylib],
+    authors = "chengchingwen <adgjl5645@hotmail.com> and contributors",
+    repo = "https://github.com/chengchingwen/Raylib.jl/blob/{commit}{path}#{line}",
+    sitename = "Raylib.jl",
+    format = Documenter.HTML(;
+        prettyurls = get(ENV, "CI", "false") == "true",
+        canonical = "https://chengchingwen.github.io/Raylib.jl",
+        assets = String[],
+        size_threshold = 1_000_000,
     ),
-    pages=[
-        "Home" => "index.md",
-        "Bindings" => "bindings.md",
-    ],
+    pages = ["Home" => "index.md", "Bindings" => "bindings.md"],
 )
 
-deploydocs(;
-    repo="github.com/chengchingwen/Raylib.jl",
-    devbranch="main",
-)
+deploydocs(; repo = "github.com/chengchingwen/Raylib.jl", devbranch = "main")
