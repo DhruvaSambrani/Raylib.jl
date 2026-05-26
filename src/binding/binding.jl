@@ -28,8 +28,6 @@ let
             "Model",
             "Material",
             "Wave",
-            "AudioStream",
-            "Music",
         ])
 
         # Updated to safely handle `nothing` pointers for simple value-type 'char' fields
