@@ -10,6 +10,7 @@ import ..Raylib:
 
 include("./pointer.jl")
 include("./struct.jl")
+include("./lists.jl")
 
 to_cstring(::Nothing) = C_NULL
 to_cstring(s::String) = s
@@ -239,6 +240,10 @@ let
             body = Expr(:block, fields_ex...)
             prefix = startswith(name, "Ray") ? "" : "Ray"
             name_ex = Symbol(prefix * name)
+
+            if endswith(name, "List")
+                name_ex = Expr(:(<:), name_ex, :RayListContainer)
+            end
 
             # Dynamically determine if this struct should be mutable
             is_mutable = name in MUTABLE_TYPES
