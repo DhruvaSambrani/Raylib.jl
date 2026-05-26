@@ -4,7 +4,7 @@ import Accessors
 import Base: propertynames, getproperty, setproperty!
 
 macro mutate(expr)
-    return Accessors.setmacro(identity, expr; overwrite=true)
+    return Accessors.setmacro(identity, expr; overwrite = true)
 end
 
 struct MutableString
@@ -60,4 +60,3 @@ rayvector(v::Vararg{Real,4}) = RayVector4(v)
 
 const RayMatrix = SMatrix{4,4,Cfloat,16}
 const RayMatrix2x2 = SMatrix{2,2,Cfloat,4}
-

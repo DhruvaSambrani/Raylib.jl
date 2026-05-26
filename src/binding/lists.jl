@@ -3,7 +3,7 @@ abstract type RayListContainer <: AbstractVector{Any} end
 Base.size(list::RayListContainer) = (Int(_list_count(list)),)
 @inline _list_count(list) = list.count
 
-@generated function _list_ptr_field(::Type{T}) where T
+@generated function _list_ptr_field(::Type{T}) where {T}
     for (f, t) in zip(fieldnames(T), fieldtypes(T))
         if t <: Ptr
             return QuoteNode(f)
@@ -40,4 +40,3 @@ function Base.setindex!(list::RayListContainer, value, i::Int)
     ET = eltype(ptr)
     unsafe_store!(ptr, convert(ET, value), i)
 end
-
